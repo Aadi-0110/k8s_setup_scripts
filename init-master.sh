@@ -22,10 +22,12 @@ sudo chown "$(id -u):$(id -g)" "$HOME/.kube/config"
 
 # Flannel overlay and NIC pinning[100]
 kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
-kubectl -n kube-system set env daemonset/kube-flannel-ds FLANNELD_IFACE="$NIC"
+echo "Waiting for Flannel daemonset to be created..."
+kubectl -n kube-flannel wait --for=condition=available --timeout=120s daemonset/kube-flannel-ds
+kubectl -n kube-flannel set env daemonset/kube-flannel-ds FLANNELD_IFACE="$NIC"
 
-echo "Waiting for system pods…"
-kubectl wait -n kube-system --for=condition=Ready pods --all --timeout=300s
+echo "Waiting for cluster networking to be ready..."
+kubectl -n kube-flannel rollout status daemonset/kube-flannel-ds --timeout=300s
 
 # --- OPTIONAL: schedule workloads on master ------------------------------
 read -rp "Allow regular pods on the master? [y/N]: " SCHED
